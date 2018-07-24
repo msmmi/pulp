@@ -1,14 +1,19 @@
+import datetime
+
 from app import db
+
+# A visual schema lives at https://www.dbdesigner.net/designer/schema/188128
 
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), index=True, unique=True)
+    name = db.Column(db.String(64))
     email = db.Column(db.String(120), index=True, unique=True)
+    username = db.Column(db.String(120), unique=True)
     admin = db.Column(db.Boolean, default=False)
     avatar = db.Column(db.String(200))
-    active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime)
+    deactivated_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
     @property
     def is_authenticated(self):
@@ -16,7 +21,7 @@ class User(db.Model):
 
     @property
     def is_active(self):
-        return True
+        return self.deactivated_at is not None
 
     @property
     def is_anonymous(self):
