@@ -19,4 +19,5 @@ class Auth:
     TOKEN_URI = 'https://accounts.google.com/o/oauth2/token'
     USER_INFO = 'https://www.googleapis.com/userinfo/v2/me'
 
+
 ENVIRONMENT = 'dev'
