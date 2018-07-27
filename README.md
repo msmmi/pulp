@@ -31,7 +31,7 @@ Or, if you don't want/need a background service you can just run:
 To get into postgresql:
 `psql postgres`
 
-Create a new database with `CREATE DATABASE wager_river`
+Create a new database with `CREATE DATABASE pulp`
 
 `python db_create.py`
 
