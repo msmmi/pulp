@@ -1,5 +1,5 @@
-# flask-template
-Basic Flask App To Start With
+# Pulp
+Betting on Sports With Friends!
 
 ## Set Up
 
