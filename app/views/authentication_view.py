@@ -1,4 +1,6 @@
 import json
+
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from urllib3.exceptions import HTTPError
 
 import flask
@@ -6,31 +8,37 @@ from flask import redirect
 from flask import request
 from flask import session as flask_session
 from flask import url_for
-from flask_login import logout_user, login_user
+from werkzeug.security import check_password_hash
 
-from app import app, db, login_manager
+from app import app, db
+from app.lib.user_lib import create_user
 from app.models import User
 from app.views.handlers.auth_handler import get_google_auth
-from config import Auth, ENVIRONMENT
+from config import Auth
 
 
-@login_manager.user_loader
-def load_user(user_id):
+@app.route('/login', methods=['POST'])
+def login():
+    if not request.is_json:
+        return flask.jsonify({"msg": "Missing JSON in request"}), 400
+
+    email = request.json.get('email', None)
+    password = request.json.get('password', None)
+    if not email:
+        return flask.jsonify({"msg": "Missing email parameter"}), 400
+    if not password:
+        return flask.jsonify({"msg": "Missing password parameter"}), 400
+
     session = db.session
-    return session.query(User).get(user_id)
+    user = session.query(User).filter(User.email == email).first()
+    if not user:
+        return flask.jsonify({"msg": "No user with that email"}), 400
+    if not check_password_hash(user.password, password):
+        return flask.jsonify({"msg": "Wrong password"}), 400
 
-
-@app.route('/dev-login/<int:user_id>')
-def dev_login(user_id):
-    if ENVIRONMENT == 'dev':
-        login_user(db.session.query(User).get(user_id))
-    return redirect(url_for('index'))
-
-
-@app.route('/logout')
-def logout():
-    logout_user()
-    return flask.redirect(flask.url_for('index'))
+    # Identity can be any data that is json serializable
+    access_token = create_access_token(identity=email)
+    return flask.jsonify(access_token=access_token), 200
 
 
 @app.route('/gCallback')
@@ -75,6 +83,33 @@ def callback():
             user.tokens = json.dumps(token)
             session.add(user)
             session.commit()
-            login_user(user)
             return redirect(url_for('index'))
         return 'Could not fetch your information.'
+
+
+@app.route('/create_user', methods=['POST'])
+def create_user_view():
+    current_user = flask.g.user
+    if current_user.is_authenticated:
+        return 'You must not be logged in to create a user', 400
+
+    session = db.session
+
+    data = request.get_json()
+
+    user = create_user(data)
+
+    session.add(user)
+    session.commit()
+
+    return 'ok', 200
+
+
+# Protect a view with jwt_required, which requires a valid access token
+# in the request to access.
+@app.route('/protected', methods=['GET'])
+@jwt_required
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user = get_jwt_identity()
+    return flask.jsonify(logged_in_as=current_user), 200

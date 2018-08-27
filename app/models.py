@@ -11,6 +11,7 @@ class User(db.Model):
     name = db.Column(db.String(64), nullable=False)
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     username = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(120))
 
     admin = db.Column(db.Boolean, default=False, nullable=False)
     avatar = db.Column(db.String(200))
@@ -84,7 +85,7 @@ class TakenWager(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow(), nullable=False)
 
     user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
-    user = db.relationship("User", backref="user_wagers")
+    user = db.relationship("User", backref="user_taken_wagers")
 
     wager_id = db.Column(db.BigInteger, db.ForeignKey('wager.id'))
     wager = db.relationship("Wager", backref="taken_wagers")
@@ -102,4 +103,4 @@ class Result(db.Model):
     created_by = db.relationship("User")
 
     wager_id = db.Column(db.BigInteger, db.ForeignKey('wager.id'))
-    wager = db.relationship("Wager", backref="taken_wagers")
+    wager = db.relationship("Wager", backref="wager_results")
