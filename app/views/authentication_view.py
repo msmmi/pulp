@@ -30,8 +30,11 @@ def login():
         return flask.jsonify({"msg": "Missing password parameter"}), 400
 
     session = db.session
-    user = session.query(User).filter(User.username == username).one()
-    check_password_hash(user.password, password)
+    user = session.query(User).filter(User.username == username).first()
+    if not user:
+        return flask.jsonify({"msg": "No user with that username"}), 400
+    if not check_password_hash(user.password, password):
+        return flask.jsonify({"msg": "Wrong password"}), 400
 
     # Identity can be any data that is json serializable
     access_token = create_access_token(identity=username)
