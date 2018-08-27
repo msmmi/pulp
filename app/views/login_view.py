@@ -1,4 +1,6 @@
 import json
+
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from urllib3.exceptions import HTTPError
 
 import flask
@@ -8,9 +10,30 @@ from flask import session as flask_session
 from flask import url_for
 
 from app import app, db
+from app.lib.user_lib import create_user
 from app.models import User
 from app.views.handlers.auth_handler import get_google_auth
 from config import Auth
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    if not request.is_json:
+        return flask.jsonify({"msg": "Missing JSON in request"}), 400
+
+    username = request.json.get('username', None)
+    password = request.json.get('password', None)
+    if not username:
+        return flask.jsonify({"msg": "Missing username parameter"}), 400
+    if not password:
+        return flask.jsonify({"msg": "Missing password parameter"}), 400
+
+    if username != 'test' or password != 'test':
+        return flask.jsonify({"msg": "Bad username or password"}), 401
+
+    # Identity can be any data that is json serializable
+    access_token = create_access_token(identity=username)
+    return flask.jsonify(access_token=access_token), 200
 
 
 @app.route('/gCallback')
@@ -75,3 +98,13 @@ def create_user_view():
     session.commit()
 
     return 'ok', 200
+
+
+# Protect a view with jwt_required, which requires a valid access token
+# in the request to access.
+@app.route('/protected', methods=['GET'])
+@jwt_required
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user = get_jwt_identity()
+    return flask.jsonify(logged_in_as=current_user), 200
