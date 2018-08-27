@@ -9,6 +9,7 @@ from flask import url_for
 from flask_login import logout_user, login_user
 
 from app import app, db, login_manager
+from app.lib.user_lib import create_user
 from app.models import User
 from app.views.handlers.auth_handler import get_google_auth
 from config import Auth, ENVIRONMENT
@@ -78,3 +79,21 @@ def callback():
             login_user(user)
             return redirect(url_for('index'))
         return 'Could not fetch your information.'
+
+
+@app.route('/create_user', methods=['POST'])
+def create_user_view():
+    current_user = flask.g.user
+    if current_user.is_authenticated:
+        return 'You must not be logged in to create a user', 400
+
+    session = db.session
+
+    data = request.get_json()
+
+    user = create_user(data)
+
+    session.add(user)
+    session.commit()
+
+    return 'ok', 200
