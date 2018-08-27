@@ -24,11 +24,6 @@ def get_google_auth(state=None, token=None):
 
 
 def get_google_authorization_url():
-    current_user = flask.g.user
-
-    if current_user.is_authenticated:
-        return
-
     google = get_google_auth()
 
     auth_url, state = google.authorization_url(Auth.AUTH_URI)
