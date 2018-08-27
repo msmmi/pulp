@@ -95,5 +95,6 @@ def create_user_view():
 
     session.add(user)
     session.commit()
+    login_user(user)
 
     return 'ok', 200
