@@ -8,6 +8,7 @@ from flask import redirect
 from flask import request
 from flask import session as flask_session
 from flask import url_for
+from werkzeug.security import check_password_hash
 
 from app import app, db
 from app.lib.user_lib import create_user
@@ -28,8 +29,9 @@ def login():
     if not password:
         return flask.jsonify({"msg": "Missing password parameter"}), 400
 
-    if username != 'test' or password != 'test':
-        return flask.jsonify({"msg": "Bad username or password"}), 401
+    session = db.session
+    user = session.query(User).filter(User.username == username).one()
+    check_password_hash(user.password, password)
 
     # Identity can be any data that is json serializable
     access_token = create_access_token(identity=username)
