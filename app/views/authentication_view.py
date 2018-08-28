@@ -43,12 +43,8 @@ def login():
 
 @app.route('/gCallback')
 def callback():
-    current_user = flask.g.user
     session = db.session
 
-    # Redirect user to home page if already logged in.
-    if current_user is not None and current_user.is_authenticated:
-        return redirect(url_for('index'))
     if 'error' in request.args:
         if request.args.get('error') == 'access_denied':
             return 'You are denied access.'
@@ -68,7 +64,6 @@ def callback():
         except HTTPError:
             return 'HTTPError occurred.'
         google = get_google_auth(token=token)
-        # todo: cool stuff in here
         resp = google.get(Auth.USER_INFO)
         if resp.status_code == 200:
             user_data = resp.json()
@@ -89,10 +84,6 @@ def callback():
 
 @app.route('/create_user', methods=['POST'])
 def create_user_view():
-    current_user = flask.g.user
-    if current_user.is_authenticated:
-        return 'You must not be logged in to create a user', 400
-
     session = db.session
 
     data = request.get_json()
@@ -102,7 +93,7 @@ def create_user_view():
     session.add(user)
     session.commit()
 
-    return 'ok', 200
+    return flask.jsonify(user.dict)
 
 
 # Protect a view with jwt_required, which requires a valid access token
@@ -112,4 +103,5 @@ def create_user_view():
 def protected():
     # Access the identity of the current user with get_jwt_identity
     current_user = get_jwt_identity()
-    return flask.jsonify(logged_in_as=current_user), 200
+    app.logger.info('This message goes to stderr and app.log from the auth view!')
+    return flask.jsonify(logged_in_as=current_user)
