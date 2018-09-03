@@ -1,8 +1,11 @@
 import datetime
+from enum import Enum
+
+import sqlalchemy
 
 from app import db
 
-# A visual schema lives at https://www.dbdesigner.net/designer/schema/188128
+# A visual schema lives at https://www.dbdesigner.net/designer/schema/196986
 
 
 class User(db.Model):
@@ -53,33 +56,50 @@ class User(db.Model):
         }
 
 
+class Event(db.Model):
+    id = db.Column(db.BigInteger, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    # if unknown, leave blank. Then when the event starts, to close betting, put start_datetime as now
+    start_datetime = db.Column(db.DateTime)
+    event_over = db.Column(db.Boolean, nullable=False, default=False)
+
+    short_description = db.Column(db.String(120))
+    long_description = db.Column(db.VARCHAR)
+    event_image = db.Column(db.VARCHAR)
+
+    line = db.Column(db.Float, default=0)
+
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow(), nullable=False)
+    deactivated_at = db.Column(db.DateTime)
+
+
 class Wager(db.Model):
     id = db.Column(db.BigInteger, primary_key=True)
 
     short_description = db.Column(db.String(120))
     long_description = db.Column(db.VARCHAR, nullable=False)
 
-    # 'group' determines if the wager is eligible for the Group Strategy if true and Head to Head if false.
-    group = db.Column(db.Boolean, default=False, nullable=False)
-    # An activated wager is one that has action on both sides. For instance, when you propose a wager and take one side,
-    # it is not activated until someone else takes the other side.
-    activated = db.Column(db.Boolean, default=False, nullable=False)
+    # string description of what side you're betting on (Miami Dolphins)
+    side_1_name = db.Column(db.String(120))
+    side_2_name = db.Column(db.String(120))
+
+    # the Wager should only get shown when the line on the Wager matches the line on the Event
+    line = db.Column(db.Float, default=0)
 
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow(), nullable=False)
     deactivated_at = db.Column(db.DateTime)
 
-    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
-    user = db.relationship("User", backref="user_wagers")
+    created_by_id = db.Column(db.BigInteger, db.ForeignKey('user.id'))
+    created_by = db.relationship("User", backref="user_created_wagers")
+
+    event_id = db.Column(db.BigInteger, db.ForeignKey('event.id'))
+    event = db.relationship("Event", backref="event_wagers")
 
 
 class TakenWager(db.Model):
     id = db.Column(db.BigInteger, primary_key=True)
 
-    # wager_true declares if the user thinks the wager will turn out to be true.
-    # For example, on an over/under bet of Julio Jones getting 300 yards, the wager_true would be true.
-    # For Dolphins vs Patriots, Dolphins -5, wager_true would be true if the user thinks the Dolphins will win by more
-    # than 5.
-    wager_true = db.Column(db.Boolean, nullable=False)
+    bet_on_side_1 = db.Column(db.Boolean, nullable=False)
     bet_amount = db.Column(db.Integer, nullable=False)
 
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow(), nullable=False)
@@ -91,10 +111,38 @@ class TakenWager(db.Model):
     wager = db.relationship("Wager", backref="taken_wagers")
 
 
+class MatchedWager(db.Model):
+    id = db.Column(db.BigInteger, primary_key=True)
+
+    amount = db.Column(db.Integer, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow(), nullable=False)
+
+    taken_wager_1_id = db.Column(db.BigInteger, db.ForeignKey('taken_wager.id', ondelete="CASCADE"))
+    taken_wager_2_id = db.Column(db.BigInteger, db.ForeignKey('taken_wager.id', ondelete="CASCADE"))
+
+    taken_wager_1 = db.relationship(
+        "TakenWager",
+        foreign_keys=[taken_wager_1_id],
+        backref=sqlalchemy.orm.backref('taken_1'))
+    taken_wager_2 = db.relationship(
+        "TakenWager",
+        foreign_keys=[taken_wager_2_id],
+        backref=sqlalchemy.orm.backref('taken_2'))
+
+
+class WagerResult(Enum):
+    Undetermined = 0
+    Side1Wins = 1
+    Side2Wins = 2
+    Push = 3
+    UnderArbitration = 4
+
+
 class Result(db.Model):
     id = db.Column(db.BigInteger, primary_key=True)
 
-    wager_result = db.Column(db.SmallInteger, nullable=False)
+    wager_result = db.Column(db.SmallInteger, nullable=False, default=WagerResult.Undetermined)
     evidence = db.Column(db.VARCHAR)
 
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow(), nullable=False)
