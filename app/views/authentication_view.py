@@ -8,6 +8,7 @@ from flask import redirect
 from flask import request
 from flask import session as flask_session
 from flask import url_for
+from sqlalchemy import func
 from werkzeug.security import check_password_hash
 
 from app import app, db
@@ -30,7 +31,10 @@ def login():
         return flask.jsonify({"msg": "Missing password parameter"}), 400
 
     session = db.session
-    user = session.query(User).filter(User.email == email).first()
+    user = session.query(User).filter(
+        func.lower(User.email) == email.lower()
+    ).first()
+
     if not user:
         return flask.jsonify({"msg": "No user with that email"}), 400
     if not check_password_hash(user.password, password):
